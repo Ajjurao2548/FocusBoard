@@ -1,122 +1,170 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+
+import { useState } from "react";
+
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import StatCard from "./components/StatCard";
+import FocusNotes from "./components/FocusNotes";
+import TaskList from "./components/TaskList";
+import TaskForm from "./components/TaskForm";
+import SearchBar from "./components/SearchBar";
+import FilterTabs from "./components/FilterTabs";
+
+import { sampleTasks } from "./data/sampleTasks";
+import useLocalStorage from "./hooks/useLocalStorage";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [tasks, setTasks] = useLocalStorage(
+    "focusboard-tasks",
+    sampleTasks
+  );
+
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesStatus =
+      activeFilter === "All" || task.status === activeFilter;
+
+    const matchesPriority =
+      priorityFilter === "All" || task.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  const totalTasks = tasks.length;
+  const inProgress = tasks.filter(
+    (task) => task.status === "In Progress"
+  ).length;
+  const completed = tasks.filter(
+    (task) => task.status === "Completed"
+  ).length;
+
+  const completionPercentage = totalTasks
+    ? Math.round((completed / totalTasks) * 100)
+    : 0;
+
+  const handleSave = (taskData) => {
+    if (editingTask) {
+      setTasks((previous) =>
+        previous.map((task) =>
+          task.id === editingTask.id
+            ? { ...task, ...taskData }
+            : task
+        )
+      );
+    } else {
+      setTasks((previous) => [
+        ...previous,
+        {
+          ...taskData,
+          id: Date.now(),
+          status: "To do",
+        },
+      ]);
+    }
+
+    setShowForm(false);
+    setEditingTask(null);
+  };
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    setShowForm(true);
+  };
+
+  const handleDelete = (id) => {
+    setTasks((previous) =>
+      previous.filter((task) => task.id !== id)
+    );
+  };
+
+  const handleStatusChange = (id, status) => {
+    setTasks((previous) =>
+      previous.map((task) =>
+        task.id === id ? { ...task, status } : task
+      )
+    );
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+      <Sidebar />
 
-      <div className="ticks"></div>
+      <main className="main-content">
+        <Header />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <section className="stats-grid">
+          <StatCard title="Total Tasks" value={totalTasks} />
+          <StatCard title="In Progress" value={inProgress} />
+          <StatCard title="Completed" value={completed} />
+          <StatCard
+            title="Completion"
+            value={`${completionPercentage}%`}
+          />
+        </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <FocusNotes />
+
+        <section className="tasks-section" id="tasks">
+          <div className="tasks-heading">
+            <h2>My Tasks</h2>
+            <button onClick={() => setShowForm(true)}>
+              + Add Task
+            </button>
+          </div>
+
+          <SearchBar
+            search={search}
+            setSearch={setSearch}
+          />
+
+          <FilterTabs
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+          />
+
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            aria-label="Filter by priority"
+          >
+            <option value="All">All priorities</option>
+            <option value="High">High priority</option>
+            <option value="Medium">Medium priority</option>
+            <option value="Low">Low priority</option>
+          </select>
+
+          <TaskList
+            tasks={filteredTasks}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
+          />
+        </section>
+
+        {showForm && (
+          <div className="modal-overlay">
+            <TaskForm
+              onSave={handleSave}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingTask(null);
+              }}
+              editingTask={editingTask}
+            />
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;
